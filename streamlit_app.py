@@ -30,6 +30,17 @@ with open(geojson_path) as f:
 st.title("California Infectious Disease Dashboard")
 st.markdown("_Data from 2001–2023 (Provisional)_")
 
+# Initialize session state for filters
+defaults = {
+    'disease': 'All Diseases',
+    'county': 'All Counties',
+    'year': 'All Years',
+    'sex': 'All'
+}
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
 # Sidebar filters
 st.sidebar.header("Filters")
 diseases = ['All Diseases'] + sorted(df['Disease'].unique())
@@ -37,23 +48,27 @@ counties = ['All Counties'] + sorted(df['County'].unique())
 years = ['All Years'] + sorted(df['Year'].astype(str).unique())
 sexes = ['All'] + sorted(df['Sex'].unique())
 
-disease = st.sidebar.selectbox("Disease", diseases)
-county = st.sidebar.selectbox("County", counties)
-year = st.sidebar.selectbox("Year", years)
-sex = st.sidebar.selectbox("Sex", sexes)
+# Render selectboxes with session_state keys
+disease = st.sidebar.selectbox("Disease", diseases, key='disease')
+county = st.sidebar.selectbox("County", counties, key='county')
+year = st.sidebar.selectbox("Year", years, key='year')
+sex = st.sidebar.selectbox("Sex", sexes, key='sex')
 
+# Clear filters button resets session state values
 if st.sidebar.button("Clear Filters"):
-    st.experimental_rerun()
+    for key, value in defaults.items():
+        st.session_state[key] = value
+    # Streamlit will automatically rerun when session state changes
 
 # Filter dataframe
 dff = df.copy()
-if disease != 'All Diseases':
+if disease != defaults['disease']:
     dff = dff[dff['Disease'] == disease]
-if county != 'All Counties':
+if county != defaults['county']:
     dff = dff[dff['County'] == county]
-if year != 'All Years':
+if year != defaults['year']:
     dff = dff[dff['Year'] == int(year)]
-if sex != 'All':
+if sex != defaults['sex']:
     dff = dff[dff['Sex'] == sex]
 
 # Metrics cards
