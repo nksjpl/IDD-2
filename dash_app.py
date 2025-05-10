@@ -1,4 +1,5 @@
 # dash_app.py
+import os
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
@@ -6,9 +7,16 @@ import pandas as pd
 import plotly.express as px
 import json
 
-# Load data from provided files
-csv_path = '/mnt/data/california_infectious_diseases.csv'
-geojson_path = '/mnt/data/california-counties.geojson'
+# Determine file paths relative to this script
+base_dir = os.path.dirname(__file__)
+csv_path = os.path.join(base_dir, 'california_infectious_diseases.csv')
+geojson_path = os.path.join(base_dir, 'california-counties.geojson')
+
+# Load data
+if not os.path.exists(csv_path):
+    raise FileNotFoundError(f"CSV file not found at {csv_path}")
+if not os.path.exists(geojson_path):
+    raise FileNotFoundError(f"GeoJSON file not found at {geojson_path}")
 
 df = pd.read_csv(csv_path)
 with open(geojson_path) as f:
