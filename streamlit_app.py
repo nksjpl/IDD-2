@@ -30,16 +30,18 @@ with open(geojson_path) as f:
 st.title("California Infectious Disease Dashboard")
 st.markdown("_Data from 2001–2023 (Provisional)_")
 
-# Initialize session state for filters
+# Default filter values
 defaults = {
     'disease': 'All Diseases',
     'county': 'All Counties',
     'year': 'All Years',
     'sex': 'All'
 }
-for key, value in defaults.items():
+
+# Initialize session state on first run
+for key, default_value in defaults.items():
     if key not in st.session_state:
-        st.session_state[key] = value
+        st.session_state[key] = default_value
 
 # Sidebar filters
 st.sidebar.header("Filters")
@@ -48,28 +50,30 @@ counties = ['All Counties'] + sorted(df['County'].unique())
 years = ['All Years'] + sorted(df['Year'].astype(str).unique())
 sexes = ['All'] + sorted(df['Sex'].unique())
 
-# Render selectboxes with session_state keys
+# Render selectboxes tied to session state keys
 disease = st.sidebar.selectbox("Disease", diseases, key='disease')
 county = st.sidebar.selectbox("County", counties, key='county')
 year = st.sidebar.selectbox("Year", years, key='year')
 sex = st.sidebar.selectbox("Sex", sexes, key='sex')
 
-# Clear filters button resets session state values
-if st.sidebar.button("Clear Filters"):
-    for key, value in defaults.items():
-        st.session_state[key] = value
-    # Streamlit will automatically rerun when session state changes
+# Clear filters button resets session state and reruns
+if st.sidebar.button("Clear Filters", key='clear'):
+    st.session_state.disease = defaults['disease']
+    st.session_state.county = defaults['county']
+    st.session_state.year = defaults['year']
+    st.session_state.sex = defaults['sex']
+    st.experimental_rerun()
 
-# Filter dataframe
+# Apply filters to dataframe
 dff = df.copy()
-if disease != defaults['disease']:
-    dff = dff[dff['Disease'] == disease]
-if county != defaults['county']:
-    dff = dff[dff['County'] == county]
-if year != defaults['year']:
-    dff = dff[dff['Year'] == int(year)]
-if sex != defaults['sex']:
-    dff = dff[dff['Sex'] == sex]
+if st.session_state.disease != defaults['disease']:
+    dff = dff[dff['Disease'] == st.session_state.disease]
+if st.session_state.county != defaults['county']:
+    dff = dff[dff['County'] == st.session_state.county]
+if st.session_state.year != defaults['year']:
+    dff = dff[dff['Year'] == int(st.session_state.year)]
+if st.session_state.sex != defaults['sex']:
+    dff = dff[dff['Sex'] == st.session_state.sex]
 
 # Metrics cards
 total = dff['Cases'].sum()
