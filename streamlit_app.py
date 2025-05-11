@@ -128,21 +128,6 @@ fig_map = px.choropleth_mapbox(
     title='Cases by County Map',
     template='plotly_white'
 )
- px.choropleth_mapbox(
-    map_df,
-    geojson=counties_geo,
-    locations='County',
-    featureidkey='properties.NAME',
-    color='County',  # use county name for discrete colors
-    color_discrete_map=color_map,
-    hover_data=['County', 'Cases'],
-    mapbox_style='carto-positron',
-    center={'lat': 37.5, 'lon': -119.5},
-    zoom=5,
-    opacity=0.85,
-    title='Cases by County Map',
-    template='plotly_white'
-)
 fig_map.update_layout(showlegend=False)
 map_col.plotly_chart(fig_map, use_container_width=True)
 
