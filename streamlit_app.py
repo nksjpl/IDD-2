@@ -6,144 +6,101 @@ import streamlit as st
 import plotly.express as px
 
 # ─── Page Configuration & Styling ──────────────────────────────────────────
-st.set_page_config(page_title="California Infectious Disease Dashboard", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="California Infectious Disease Dashboard", layout="wide")
 
-# Google-inspired color palette
-PRIMARY_COLOR = "#1a73e8" # Google Blue
-SECONDARY_COLOR = "#5f6368" # Google Grey for text
-BACKGROUND_COLOR = "#f8f9fa" # Very light grey for page background
-CARD_BACKGROUND_COLOR = "#ffffff" # White for cards
-ACCENT_RED = "#ea4335" # Google Red
-ACCENT_GREEN = "#34a853" # Google Green
-ACCENT_YELLOW = "#fbbc05" # Google Yellow
-
-# Custom CSS for a more professional "Google-like" finish
+# Custom CSS to style the app closer to the image
 st.markdown(
-    f"""
+    """
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap');
-
-        body {{
-            font-family: 'Open Sans', sans-serif;
-            background-color: {BACKGROUND_COLOR};
-            color: {SECONDARY_COLOR};
-        }}
-
-        /* Main app container */
-        .main .block-container {{
-            padding-top: 1.5rem;
+        /* Main app background */
+        .main .block-container {
+            padding-top: 2rem; /* Add some space at the top */
             padding-bottom: 2rem;
             padding-left: 2rem;
             padding-right: 2rem;
-        }}
+        }
 
         /* Header styling */
-        .header-title {{
+        .header-title {
             text-align: center;
-            font-family: 'Roboto', sans-serif;
-            font-size: 2.8rem;
-            font-weight: 700;
-            color: #202124; /* Darker grey for main title */
-            margin-bottom: 0.3rem;
-        }}
-        .header-subtitle {{
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+        .header-subtitle {
             text-align: center;
-            font-family: 'Roboto', sans-serif;
-            font-size: 1.1rem;
-            color: {SECONDARY_COLOR};
-            margin-bottom: 2.5rem;
-            font-weight: 300;
-        }}
+            font-size: 1rem;
+            color: gray;
+            margin-bottom: 2rem;
+        }
 
         /* Filter section styling */
-        .filter-container {{
-            background-color: {CARD_BACKGROUND_COLOR};
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            margin-bottom: 2.5rem;
-        }}
-        .filter-container .stSelectbox label {{
-            font-family: 'Roboto', sans-serif;
-            font-weight: 500;
-            color: #3c4043;
-            font-size: 0.95rem;
-        }}
-        .filter-container .stButton button {{
-            background-color: {ACCENT_RED} !important;
-            color: white !important;
-            border-radius: 8px !important;
-            border: none !important;
-            padding: 0.55rem 1.2rem !important;
-            font-family: 'Roboto', sans-serif;
-            font-weight: 500;
-            width: 100%;
-            transition: background-color 0.2s ease;
-        }}
-        .filter-container .stButton button:hover {{
-            background-color: #d0382b !important;
-        }}
-         .filter-container .stButton button:active {{
-            background-color: #b02d23 !important;
-        }}
-        .filter-container h3 {{ /* Subheader "Filters" */
-            font-family: 'Roboto', sans-serif;
-            font-weight: 500;
-            color: #202124;
-            margin-top: 0;
-            margin-bottom: 1.5rem;
-            font-size: 1.6rem;
-        }}
+        .filter-container {
+            background-color: #f0f2f5; /* Light gray background like in the image */
+            padding: 20px;
+            border-radius: 8px; /* Rounded corners */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .filter-container .stSelectbox label {
+            font-weight: bold; /* Make filter labels bold */
+        }
 
-        /* Metric card styling (individual card) */
-        .metric-card {{
-            background-color: {CARD_BACKGROUND_COLOR};
-            padding: 25px; /* Increased padding */
-            border-radius: 12px; /* More rounded corners */
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* Softer shadow */
-            text-align: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            height: 100%; /* Ensure cards in a row have same height if content differs */
+        /* Metric card styling */
+        .metric-card-container {
             display: flex;
-            flex-direction: column;
-            justify-content: center; /* Center content vertically */
-        }}
-        .metric-card:hover {{
-            transform: translateY(-4px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-        }}
-        .metric-label {{
-            font-family: 'Roboto', sans-serif;
-            font-size: 1rem; /* Slightly larger label */
-            color: {SECONDARY_COLOR};
-            margin-bottom: 0.5rem;
-            font-weight: 400;
-        }}
-        .metric-value {{
-            font-family: 'Roboto', sans-serif;
-            font-size: 2.6rem; /* Larger value */
-            color: {PRIMARY_COLOR};
-            font-weight: 700;
+            justify-content: space-between;
+            gap: 1rem; /* Spacing between cards */
+            margin-bottom: 2rem;
+        }
+        .metric-card {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+            flex-grow: 1; /* Make cards take equal space */
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            color: #6b7280; /* Gray color for label */
+            margin-bottom: 0.25rem;
+        }
+        .metric-value {
+            font-size: 2rem; /* Larger font for value */
+            color: #4A90E2; /* Blueish color for value, adjust as needed */
+            font-weight: bold;
             margin: 0;
-            line-height: 1.2; /* Adjust line height for large font */
-        }}
-        .metric-icon {{
-            font-size: 2rem; /* Larger icon */
-            color: {PRIMARY_COLOR};
-            margin-bottom: 0.75rem; /* More space below icon */
-        }}
+        }
 
-        /* General Plotly chart styling */
-        .stPlotlyChart {{
-            border-radius: 12px;
-            overflow: hidden; /* Ensures chart respects border radius */
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }}
+        /* Chart titles */
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-align: left;
+        }
 
         /* Hide Streamlit's default hamburger menu and footer */
-        #MainMenu {{visibility: hidden;}}
-        footer {{visibility: hidden;}}
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+
+        /* Styling for the clear filters button to make it red */
+        /* This targets the button within the specific column structure */
+        div[data-testid="stHorizontalBlock"] > div:nth-child(5) .stButton button {
+            background-color: #FF4B4B !important; /* Red color */
+            color: white !important;
+            border-radius: 4px !important;
+            border: none !important;
+            padding: 0.4rem 1rem !important; /* Adjust padding as needed */
+            width: 100%; /* Make button take full width of its column */
+        }
+        div[data-testid="stHorizontalBlock"] > div:nth-child(5) .stButton button:hover {
+            background-color: #E04040 !important; /* Darker red on hover */
+        }
+        div[data-testid="stHorizontalBlock"] > div:nth-child(5) .stButton button:active {
+            background-color: #C03030 !important; /* Even darker red on click */
+        }
 
     </style>
     """,
@@ -153,35 +110,45 @@ st.markdown(
 # ─── Data Loading ───────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
+    # Get the directory of the current script
     base_dir = os.path.dirname(__file__)
+    # Define paths to the data files
     csv_path = os.path.join(base_dir, 'california_infectious_diseases.csv')
     geojson_path = os.path.join(base_dir, 'california-counties.geojson')
 
+    # Check if data files exist
     if not (os.path.exists(csv_path) and os.path.exists(geojson_path)):
         st.error("Data files (california_infectious_diseases.csv or california-counties.geojson) not found. "
                  "Please ensure they are in the same directory as the app.")
-        st.stop()
+        st.stop() # Stop execution if files are missing
 
+    # Load the CSV data into a pandas DataFrame
     df = pd.read_csv(csv_path)
+    # Load the GeoJSON data
     with open(geojson_path) as f:
         counties_geo = json.load(f)
     return df, counties_geo
 
 df, counties_geo = load_data()
 
-geojson_feature_key = 'properties.NAME'
+# Determine the correct GeoJSON feature key (e.g., 'properties.NAME' or 'properties.name')
+geojson_feature_key = 'properties.NAME' # Default assumption
 if counties_geo and 'features' in counties_geo and counties_geo['features']:
+    # Check the properties of the first feature to find the county name key
     properties = counties_geo['features'][0].get('properties', {})
     if 'name' in properties and 'NAME' not in properties:
         geojson_feature_key = 'properties.name'
 
 
 # ─── Filter Options & Session State Initialization ─────────────────────────
+# Define options for filter dropdowns
 DISEASES = ['All Diseases'] + sorted(df['Disease'].unique())
 COUNTIES = ['All Counties'] + sorted(df['County'].unique())
 YEARS = ['All Years'] + sorted(df['Year'].astype(str).unique())
 SEXES = ['All'] + sorted(df['Sex'].unique())
 
+# Initialize session state for filters if they are not already set
+# This preserves filter selections across reruns
 if 'disease_filter' not in st.session_state:
     st.session_state.disease_filter = 'All Diseases'
 if 'county_filter' not in st.session_state:
@@ -192,65 +159,86 @@ if 'sex_filter' not in st.session_state:
     st.session_state.sex_filter = 'All'
 
 # ─── Header ─────────────────────────────────────────────────────────────────
+# Display the main title and subtitle of the dashboard
 st.markdown("<div class='header-title'>California Infectious Disease Dashboard</div>", unsafe_allow_html=True)
-st.markdown("<div class='header-subtitle'>Interactive Data from 2001–2023 (Provisional)</div>", unsafe_allow_html=True)
+st.markdown("<div class='header-subtitle'>Data from 2001–2023 (Provisional)</div>", unsafe_allow_html=True)
 
 # ─── Filter Section ─────────────────────────────────────────────────────────
+# Create a container for the filters
 st.markdown("<div class='filter-container'>", unsafe_allow_html=True)
-st.subheader("Filters")
+st.subheader("Filters") # Section title for filters
 
-filter_cols = st.columns([3, 3, 3, 3, 2]) # Adjusted for better spacing with button
+# Arrange filters in columns: 4 for dropdowns, 1 for the clear button
+filter_cols = st.columns([3, 3, 3, 3, 2]) # Relative widths of columns
 
+# Disease Filter
 with filter_cols[0]:
+    # Create a selectbox for disease selection
+    # The index is set based on the current session state value
     sel_disease = st.selectbox(
-        "Disease", DISEASES, key='disease_filter_widget',
+        "Disease",
+        DISEASES,
+        key='disease_filter_widget', # Unique key for the widget
         index=DISEASES.index(st.session_state.disease_filter)
     )
+    # Update the session state when the selection changes
     if st.session_state.disease_filter != sel_disease:
         st.session_state.disease_filter = sel_disease
-        st.rerun()
+        st.rerun() # Rerun the app to apply the filter
 
+# County Filter
 with filter_cols[1]:
     sel_county = st.selectbox(
-        "County", COUNTIES, key='county_filter_widget',
+        "County",
+        COUNTIES,
+        key='county_filter_widget',
         index=COUNTIES.index(st.session_state.county_filter)
     )
     if st.session_state.county_filter != sel_county:
         st.session_state.county_filter = sel_county
         st.rerun()
 
+# Year Filter
 with filter_cols[2]:
     sel_year = st.selectbox(
-        "Year", YEARS, key='year_filter_widget',
+        "Year",
+        YEARS,
+        key='year_filter_widget',
         index=YEARS.index(st.session_state.year_filter)
     )
     if st.session_state.year_filter != sel_year:
         st.session_state.year_filter = sel_year
         st.rerun()
 
+# Sex Filter
 with filter_cols[3]:
     sel_sex = st.selectbox(
-        "Sex", SEXES, key='sex_filter_widget',
+        "Sex",
+        SEXES,
+        key='sex_filter_widget',
         index=SEXES.index(st.session_state.sex_filter)
     )
     if st.session_state.sex_filter != sel_sex:
         st.session_state.sex_filter = sel_sex
         st.rerun()
 
+# Clear Filters Button
 with filter_cols[4]:
-    st.write("") # Spacer for vertical alignment
-    st.write("") # Spacer for vertical alignment
+    st.write("") # Add a small vertical spacer for alignment with selectbox labels
+    st.write("") # Add a small vertical spacer for alignment
     if st.button("Clear Filters", key="clear_filters_button", help="Reset all filters to default values"):
+        # Reset all filter values in session state
         st.session_state.disease_filter = 'All Diseases'
         st.session_state.county_filter = 'All Counties'
         st.session_state.year_filter = 'All Years'
         st.session_state.sex_filter = 'All'
-        st.rerun()
+        st.rerun() # Rerun the app to reflect the cleared filters
 
 st.markdown("</div>", unsafe_allow_html=True) # Close filter-container
 
 
 # ─── Apply Filters to Data ──────────────────────────────────────────────────
+# Create a filtered DataFrame based on current selections
 df_filtered = df.copy()
 if st.session_state.disease_filter != 'All Diseases':
     df_filtered = df_filtered[df_filtered['Disease'] == st.session_state.disease_filter]
@@ -262,137 +250,111 @@ if st.session_state.sex_filter != 'All':
     df_filtered = df_filtered[df_filtered['Sex'] == st.session_state.sex_filter]
 
 # ─── Metrics Cards ───────────────────────────────────────────────────────────
-# Wrapper div for bottom margin, replacing .metric-card-container's margin role
-st.markdown("<div style='margin-bottom: 2.5rem;'>", unsafe_allow_html=True)
+# Create a container for metric cards
+st.markdown("<div class='metric-card-container'>", unsafe_allow_html=True)
 
-metric_cols = st.columns(3, gap="large") # Use st.columns for horizontal layout
-
+# Calculate metrics from the filtered data
 total_cases = int(df_filtered['Cases'].sum())
 first_reported_year = df_filtered['Year'].min() if not df_filtered.empty else "N/A"
 last_reported_year = df_filtered['Year'].max() if not df_filtered.empty else "N/A"
 
-ICON_CASES = "📊"
-ICON_CALENDAR_START = "🗓️"
-ICON_CALENDAR_END = "🗓️"
+# Display Metric Card 1: Total Cases
+st.markdown(f"""
+<div class='metric-card'>
+    <p class='metric-label'>Total Cases</p>
+    <p class='metric-value'>{total_cases:,}</p>
+</div>
+""", unsafe_allow_html=True)
 
-with metric_cols[0]:
-    st.markdown(f"""
-    <div class='metric-card'>
-        <div class='metric-icon'>{ICON_CASES}</div>
-        <p class='metric-label'>Total Cases</p>
-        <p class='metric-value'>{total_cases:,}</p>
-    </div>
-    """, unsafe_allow_html=True)
+# Display Metric Card 2: First Reported Year
+st.markdown(f"""
+<div class='metric-card'>
+    <p class='metric-label'>First Reported Year</p>
+    <p class='metric-value'>{first_reported_year}</p>
+</div>
+""", unsafe_allow_html=True)
 
-with metric_cols[1]:
-    st.markdown(f"""
-    <div class='metric-card'>
-        <div class='metric-icon'>{ICON_CALENDAR_START}</div>
-        <p class='metric-label'>First Reported Year</p>
-        <p class='metric-value'>{first_reported_year}</p>
-    </div>
-    """, unsafe_allow_html=True)
+# Display Metric Card 3: Last Reported Year
+st.markdown(f"""
+<div class='metric-card'>
+    <p class='metric-label'>Last Reported Year</p>
+    <p class='metric-value'>{last_reported_year}</p>
+</div>
+""", unsafe_allow_html=True)
 
-with metric_cols[2]:
-    st.markdown(f"""
-    <div class='metric-card'>
-        <div class='metric-icon'>{ICON_CALENDAR_END}</div>
-        <p class='metric-label'>Last Reported Year</p>
-        <p class='metric-value'>{last_reported_year}</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True) # Close margin-bottom wrapper
+st.markdown("</div>", unsafe_allow_html=True) # Close metric-card-container
 
 
 # ─── Charts Section ─────────────────────────────────────────────────────────
-charts_col1, charts_col2 = st.columns([0.62, 0.38], gap="large")
-
-# Plotly chart font and general layout settings
-# Note: Plotly's 'title_font.weight' is not a standard attribute. Weight is usually part of font family.
-# 'Roboto' at 500 weight is available via the Google Fonts import.
-chart_layout_defaults = {
-    'font': {'family': "Open Sans, sans-serif", 'size': 12, 'color': SECONDARY_COLOR},
-    'title_font': {'family': "Roboto, sans-serif", 'size': 20, 'color': '#202124'}, # Adjusted size
-    'paper_bgcolor': CARD_BACKGROUND_COLOR,
-    'plot_bgcolor': CARD_BACKGROUND_COLOR,
-    'legend': {'font': {'size': 11, 'family': "Open Sans, sans-serif"}}
-}
+# Arrange charts in columns: bar chart (wider) and map chart
+charts_col1, charts_col2 = st.columns([0.65, 0.35], gap="large")
 
 with charts_col1:
-    # Title is now handled by Plotly layout
+    # Bar Chart: Filtered Data Breakdown
+    st.markdown("<div class='chart-title'>Filtered Data Breakdown</div>", unsafe_allow_html=True)
+    # Aggregate data for the bar chart
     bar_data = df_filtered.groupby('Year')['Cases'].sum().reset_index()
     fig_bar = px.bar(
-        bar_data, x='Year', y='Cases',
+        bar_data,
+        x='Year',
+        y='Cases',
         labels={'Cases': 'Number of Cases', 'Year': 'Year'},
-        color_discrete_sequence=[PRIMARY_COLOR]
+        template='plotly_white' # Use a clean Plotly template
     )
     fig_bar.update_layout(
-        title_text="Filtered Data Breakdown (by Year)",
-        title_x=0.02, # Left-align title
-        title_yanchor='top',
-        title_pad_t=20, # Padding for title
-        **chart_layout_defaults,
-        margin=dict(t=70, l=70, r=30, b=50), # Increased top margin for title
+        margin=dict(t=30, l=60, r=20, b=40), # Adjust chart margins
         yaxis_title="Number of Cases",
-        xaxis_title="Year",
-        bargap=0.2
+        xaxis_title="Year"
     )
-    fig_bar.update_traces(marker_line_width=0)
-    st.plotly_chart(fig_bar, use_container_width=True)
+    st.plotly_chart(fig_bar, use_container_width=True) # Display chart, fit to column width
 
 with charts_col2:
-    # Title is now handled by Plotly layout
+    # Map Chart: Cases by County
+    st.markdown("<div class='chart-title'>Cases by County Map</div>", unsafe_allow_html=True)
+    # Aggregate data for the map
     map_data = df_filtered.groupby('County')['Cases'].sum().reset_index()
-    map_data['County'] = map_data['County'].str.title()
+    map_data['County'] = map_data['County'].str.title() # Ensure county names are title case for matching
 
     fig_map = px.choropleth_mapbox(
-        map_data, geojson=counties_geo, locations='County',
-        featureidkey=geojson_feature_key, color='Cases',
-        color_continuous_scale=px.colors.sequential.Blues,
-        range_color=(0, map_data['Cases'].max() if not map_data.empty else 1),
-        mapbox_style='carto-positron',
-        center={'lat': 37.5, 'lon': -119.5}, zoom=4.7, opacity=0.75,
-        hover_data={'County': True, 'Cases': ':,2f'}
+        map_data,
+        geojson=counties_geo,
+        locations='County', # Column in map_data for locations
+        featureidkey=geojson_feature_key, # Path to feature id in GeoJSON
+        color='Cases', # Column for color scale
+        color_continuous_scale="Viridis", # Color scale for the choropleth
+        range_color=(0, map_data['Cases'].max() if not map_data.empty else 1), # Dynamic color range
+        mapbox_style='carto-positron', # Mapbox style
+        center={'lat': 37.5, 'lon': -119.5}, # Center of the map
+        zoom=4.5, # Initial zoom level
+        opacity=0.7, # Opacity of the choropleth layer
+        hover_data={'County': True, 'Cases': True} # Data to show on hover
     )
     fig_map.update_layout(
-        title_text="Cases by County Map", # Set title text
-        title_x=0.02, # Left-align title
-        title_yanchor='top',
-        title_pad_t=20,
-        **chart_layout_defaults, # Apply shared defaults
-        margin=dict(t=70, l=0, r=0, b=0), # Increased top margin for title
-        coloraxis_colorbar=dict(
-            title="Cases",
-            tickfont={'family': "Open Sans", 'size': 10, 'color': SECONDARY_COLOR},
-            titlefont={'family': "Roboto", 'size': 12, 'color': SECONDARY_COLOR}
-        )
+        margin=dict(t=30, l=0, r=0, b=0), # Adjust map margins
+        coloraxis_colorbar=dict(title="Cases") # Title for the color bar
     )
     st.plotly_chart(fig_map, use_container_width=True)
 
-# Spacer for the "Cases Over Time (Trend)" chart, replacing the old margin from its st.markdown title
-st.markdown("<div style='margin-top: 2.5rem;'></div>", unsafe_allow_html=True)
-line_data = df_filtered.groupby('Year')['Cases'].sum().reset_index()
+# Cases Over Time (Area Chart) - Full Width
+st.markdown("<div class='chart-title' style='margin-top: 2rem;'>Cases Over Time</div>", unsafe_allow_html=True)
+# Data for area chart is typically aggregated year/cases, same as bar_data
+line_data = bar_data.copy()
 fig_line = px.area(
-    line_data, x='Year', y='Cases',
-    labels={'Cases': 'Number of Cases', 'Year': 'Year'}
+    line_data,
+    x='Year',
+    y='Cases',
+    labels={'Cases': 'Number of Cases', 'Year': 'Year'},
+    template='plotly_white'
 )
 fig_line.update_layout(
-    title_text="Cases Over Time (Trend)", # Set title text
-    title_x=0.02, # Left-align title
-    title_yanchor='top',
-    title_pad_t=20,
-    **chart_layout_defaults,
-    margin=dict(t=70, l=70, r=30, b=50), # Increased top margin for title
+    margin=dict(t=30, l=60, r=20, b=40),
     yaxis_title="Number of Cases",
     xaxis_title="Year"
 )
-fig_line.update_traces(
-    fillcolor=f'rgba({int(PRIMARY_COLOR[1:3], 16)}, {int(PRIMARY_COLOR[3:5], 16)}, {int(PRIMARY_COLOR[5:7], 16)}, 0.2)',
-    line=dict(color=PRIMARY_COLOR, width=2.5)
-)
+# Customize the fill and line color of the area chart
+fig_line.update_traces(fillcolor='rgba(74,144,226,0.3)', line=dict(color='rgba(74,144,226,1)'))
 st.plotly_chart(fig_line, use_container_width=True)
 
+# Reminder about data file location if they were initially not found
 if not os.path.exists(os.path.join(os.path.dirname(__file__), 'california_infectious_diseases.csv')):
     st.caption("Reminder: `california_infectious_diseases.csv` and `california-counties.geojson` must be in the same directory as this script for the dashboard to function correctly.")
-
