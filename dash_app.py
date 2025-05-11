@@ -3,131 +3,148 @@ import os
 import json
 import pandas as pd
 import dash
-import dash_bootstrap_components as dbc
 from dash import html, dcc
 from dash.dependencies import Input, Output
 import plotly.express as px
 
-# ─── App Initialization ─────────────────────────────────────────────────────
+# ─── Data Paths ─────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(__file__)
 CSV_PATH = os.path.join(BASE_DIR, 'california_infectious_diseases.csv')
 GEOJSON_PATH = os.path.join(BASE_DIR, 'california-counties.geojson')
 
-# Load and validate data
-if not os.path.exists(CSV_PATH):
-    raise FileNotFoundError(f"Data file not found: {CSV_PATH}")
-if not os.path.exists(GEOJSON_PATH):
-    raise FileNotFoundError(f"GeoJSON file not found: {GEOJSON_PATH}")
+# ─── Load Data ──────────────────────────────────────────────────────────────
+if not os.path.exists(CSV_PATH) or not os.path.exists(GEOJSON_PATH):
+    raise FileNotFoundError('CSV or GeoJSON file not found in project directory')
 
+# Master DataFrame
 df = pd.read_csv(CSV_PATH)
+# GeoJSON for choropleth
 with open(GEOJSON_PATH) as f:
     counties_geo = json.load(f)
 
-# Instantiate Dash with Bootstrap theme
-app = dash.Dash(
-    __name__,
-    external_stylesheets=[dbc.themes.FLATLY],
-    title='CA Infectious Disease Dashboard'
-)
+# ─── Filter Options ─────────────────────────────────────────────────────────
+diseases = ['All Diseases'] + sorted(df['Disease'].unique())
+counties = ['All Counties'] + sorted(df['County'].unique())
+years = ['All Years'] + sorted(df['Year'].astype(str).unique())
+sexes = ['All'] + sorted(df['Sex'].unique())
+
+# ─── Dash App Initialization ─────────────────────────────────────────────────
+app = dash.Dash(__name__, title='California Infectious Disease Dashboard')
 server = app.server
 
-# ─── Compute Filter Options ─────────────────────────────────────────────────
-options = {
-    'disease': ['All Diseases'] + sorted(df['Disease'].unique()),
-    'county': ['All Counties'] + sorted(df['County'].unique()),
-    'year':   ['All Years'] + sorted(df['Year'].astype(str).unique()),
-    'sex':    ['All'] + sorted(df['Sex'].unique())
-}
-
-# ─── Shared Styles ──────────────────────────────────────────────────────────
-CARD_STYLE = {'borderRadius': '0.5rem', 'boxShadow': '0 2px 4px rgba(0,0,0,0.1)', 'padding': '1rem'}
-HEADER_STYLE = {'marginTop': '2rem', 'marginBottom': '1rem'}
-
-# ─── Layout ─────────────────────────────────────────────────────────────────
-app.layout = dbc.Container([  
-    # Title
-    dbc.Row(dbc.Col(html.H1("California Infectious Disease Dashboard", className='text-center'), width=12), style=HEADER_STYLE),
-    dbc.Row(dbc.Col(html.P("Data from 2001–2023 (Provisional)", className='text-center text-muted'), width=12)),
+# ─── App Layout ──────────────────────────────────────────────────────────────
+app.layout = html.Div([
+    # Header
+    html.Div([
+        html.H2('California Infectious Disease Dashboard', style={'margin': '0'}),
+        html.P('Data from 2001–2023 (Provisional)', style={'margin': '0', 'color':'gray'})
+    ], style={'textAlign':'center', 'padding':'20px'}),
 
     # Filters
-    dbc.Card([
-        dbc.Row([
-            dbc.Col([html.Label('Disease'), dcc.Dropdown(id='disease-filter', options=[{'label':d,'value':d} for d in options['disease']], value=options['disease'][0])], width=3),
-            dbc.Col([html.Label('County'),  dcc.Dropdown(id='county-filter',  options=[{'label':c,'value':c} for c in options['county']],   value=options['county'][0])],  width=3),
-            dbc.Col([html.Label('Year'),    dcc.Dropdown(id='year-filter',    options=[{'label':y,'value':y} for y in options['year']],     value=options['year'][0])],     width=3),
-            dbc.Col([html.Label('Sex'),     dcc.Dropdown(id='sex-filter',     options=[{'label':s,'value':s} for s in options['sex']],      value=options['sex'][0])],      width=3)
-        ], align='center', form=True),
-        dbc.Button('Clear Filters', id='clear-filters', color='danger', outline=True, className='mt-3')
-    ], className='mb-4', style=CARD_STYLE),
+    html.Div([
+        html.Div([
+            html.Label('Disease'),
+            dcc.Dropdown(id='disease-filter', options=[{'label':d,'value':d} for d in diseases], value='All Diseases', clearable=False)
+        ], style={'width':'24%', 'display':'inline-block'}),
+        html.Div([
+            html.Label('County'),
+            dcc.Dropdown(id='county-filter', options=[{'label':c,'value':c} for c in counties], value='All Counties', clearable=False)
+        ], style={'width':'24%', 'display':'inline-block'}),
+        html.Div([
+            html.Label('Year'),
+            dcc.Dropdown(id='year-filter', options=[{'label':y,'value':y} for y in years], value='All Years', clearable=False)
+        ], style={'width':'24%', 'display':'inline-block'}),
+        html.Div([
+            html.Label('Sex'),
+            dcc.Dropdown(id='sex-filter', options=[{'label':s,'value':s} for s in sexes], value='All', clearable=False)
+        ], style={'width':'24%', 'display':'inline-block'}),
+        html.Button('Clear Filters', id='clear-button', n_clicks=0, style={'marginLeft':'20px','backgroundColor':'#FF4B4B','color':'white','border':'none','padding':'8px 16px','borderRadius':'4px'})
+    ], style={'backgroundColor':'#f0f2f5','padding':'15px','borderRadius':'6px','boxShadow':'0 2px 4px rgba(0,0,0,0.1)','margin':'20px'}),
 
-    # Summary Cards
-    dbc.Row([
-        dbc.Col(dbc.Card([html.H6('Total Cases'), html.H2(id='total-cases', className='text-primary')], style=CARD_STYLE), width=4),
-        dbc.Col(dbc.Card([html.H6('First Reported Year'), html.H2(id='first-year', className='text-primary')], style=CARD_STYLE), width=4),
-        dbc.Col(dbc.Card([html.H6('Last Reported Year'), html.H2(id='last-year',  className='text-primary')], style=CARD_STYLE), width=4)
-    ], className='mb-4'),
+    # Metrics cards
+    html.Div(id='cards-container', style={'display':'flex','justifyContent':'space-between','margin':'20px'}),
 
-    # Charts
-    dbc.Row([
-        dbc.Col(dcc.Graph(id='bar-chart', config={'displayModeBar':False}), width=8),
-        dbc.Col(dcc.Graph(id='map-chart', config={'displayModeBar':False}), width=4)
-    ], className='mb-4'),
-    dbc.Row(dbc.Col(dcc.Graph(id='area-chart', config={'displayModeBar':False}), width=12)),
+    # Charts area
+    html.Div([
+        html.Div(dcc.Graph(id='bar-chart'), style={'width':'65%','display':'inline-block','verticalAlign':'top'}),
+        html.Div(dcc.Graph(id='map-chart'), style={'width':'33%','display':'inline-block','verticalAlign':'top','paddingLeft':'10px'})
+    ], style={'margin':'20px'}),
 
-], fluid=True)
+    # Line chart
+    html.Div(dcc.Graph(id='line-chart'), style={'margin':'20px'})
+], style={'fontFamily':'Arial, sans-serif','backgroundColor':'#ffffff'})
 
-# ─── Callbacks ──────────────────────────────────────────────────────────────
+# ─── Clear Filters Callback ─────────────────────────────────────────────────
+def reset_filters(n_clicks):
+    return 'All Diseases','All Counties','All Years','All'
+
+app.callback(
+    [Output('disease-filter', 'value'),
+     Output('county-filter', 'value'),
+     Output('year-filter', 'value'),
+     Output('sex-filter', 'value')],
+    Input('clear-button','n_clicks')
+)(reset_filters)
+
+# ─── Main Update Callback ──────────────────────────────────────────────────
 @app.callback(
-    [Output('total-cases', 'children'),
-     Output('first-year',   'children'),
-     Output('last-year',    'children'),
-     Output('bar-chart',    'figure'),
-     Output('map-chart',    'figure'),
-     Output('area-chart',   'figure')],
-    [Input('disease-filter', 'value'),
-     Input('county-filter',  'value'),
-     Input('year-filter',    'value'),
-     Input('sex-filter',     'value'),
-     Input('clear-filters',  'n_clicks')]
+    [Output('cards-container','children'),
+     Output('bar-chart','figure'),
+     Output('map-chart','figure'),
+     Output('line-chart','figure')],
+    [Input('disease-filter','value'),
+     Input('county-filter','value'),
+     Input('year-filter','value'),
+     Input('sex-filter','value')]
 )
-def update_dashboard(disease, county, year, sex, clear_clicks):
-    # Reset if clear clicked
-    ctx = dash.callback_context
-    if ctx.triggered and ctx.triggered[0]['prop_id'].startswith('clear-filters'):
-        return (f"0", 'N/A', 'N/A', {}, {}, {})
-
-    # Filter data
+def update_dashboard(disease, county, year, sex):
+    # Filter DataFrame
     dff = df.copy()
-    if disease  and disease!='All Diseases': dff = dff[dff['Disease']==disease]
-    if county   and county!='All Counties':  dff = dff[dff['County']==county]
-    if year     and year!='All Years':      dff = dff[dff['Year']==int(year)]
-    if sex      and sex!='All':             dff = dff[dff['Sex']==sex]
+    if disease!='All Diseases': dff = dff[dff['Disease']==disease]
+    if county != 'All Counties': dff = dff[dff['County']==county]
+    if year   != 'All Years':    dff = dff[dff['Year']==int(year)]
+    if sex    != 'All':         dff = dff[dff['Sex']==sex]
 
-    # Metrics
+    # Cards
     total = dff['Cases'].sum()
-    first = dff['Year'].min() if not dff.empty else 'N/A'
-    last  = dff['Year'].max() if not dff.empty else 'N/A'
+    first = dff['Year'].min() if not dff.empty else None
+    last  = dff['Year'].max() if not dff.empty else None
+    cards = [
+        html.Div([
+            html.P('Total Cases', style={'margin':'0','color':'gray'}),
+            html.H3(f"{total:,}", style={'margin':'5px 0','color':'#4e50ff'})
+        ], style={'flex':'1','padding':'20px','backgroundColor':'#ffffff','borderRadius':'6px','boxShadow':'0 1px 3px rgba(0,0,0,0.1)','textAlign':'center'}),
+        html.Div([
+            html.P('First Reported Year', style={'margin':'0','color':'gray'}),
+            html.H3(f"{first}", style={'margin':'5px 0','color':'#4e50ff'})
+        ], style={'flex':'1','padding':'20px','backgroundColor':'#ffffff','borderRadius':'6px','boxShadow':'0 1px 3px rgba(0,0,0,0.1)','textAlign':'center'}),
+        html.Div([
+            html.P('Last Reported Year', style={'margin':'0','color':'gray'}),
+            html.H3(f"{last}", style={'margin':'5px 0','color':'#4e50ff'})
+        ], style={'flex':'1','padding':'20px','backgroundColor':'#ffffff','borderRadius':'6px','boxShadow':'0 1px 3px rgba(0,0,0,0.1)','textAlign':'center'})
+    ]
 
-    # Bar
-    bar_df = dff.groupby('Year')['Cases'].sum().reset_index()
-    fig_bar = px.bar(bar_df, x='Year', y='Cases', labels={'Cases':'Cases'}, template='simple_white')
-    fig_bar.update_layout(margin=dict(t=30,l=0,r=0,b=0))
+    # Bar chart
+    bar_data = dff.groupby('Year')['Cases'].sum().reset_index()
+    fig_bar = px.bar(bar_data, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, title='Filtered Data Breakdown', template='plotly_white')
+    fig_bar.update_layout(margin={'t':40,'l':40,'r':20,'b':40})
 
-    # Map
-    map_df = dff.groupby('County')['Cases'].sum().reset_index()
+    # Map chart
+    map_data = dff.groupby('County')['Cases'].sum().reset_index()
+    map_data['County'] = map_data['County'].str.title()
     fig_map = px.choropleth_mapbox(
-        map_df, geojson=counties_geo, locations='County', featureidkey='properties.NAME',
-        color='Cases', hover_data=['Cases'], mapbox_style='carto-positron',
-        center={'lat':37.5,'lon':-119.5}, zoom=5, opacity=0.6, template='simple_white'
+        map_data, geojson=counties_geo, locations='County', featureidkey='properties.NAME',
+        color='Cases', hover_data=['County','Cases'], mapbox_style='carto-positron',
+        center={'lat':37.5,'lon':-119.5}, zoom=5, opacity=0.6, title='Cases by County Map', template='plotly_white'
     )
-    fig_map.update_layout(margin=dict(t=30,l=0,r=0,b=0))
+    fig_map.update_layout(margin={'t':40,'l':0,'r':0,'b':0})
 
-    # Area
-    fig_area = px.area(bar_df, x='Year', y='Cases', labels={'Cases':'Cases'}, template='simple_white')
-    fig_area.update_layout(margin=dict(t=30,l=0,r=0,b=0))
+    # Line chart
+    fig_line = px.area(bar_data, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, title='Cases Over Time', template='plotly_white')
+    fig_line.update_layout(margin={'t':40,'l':40,'r':20,'b':40})
 
-    return f"{total:,}", first, last, fig_bar, fig_map, fig_area
+    return [cards, fig_bar, fig_map, fig_line]
 
-# ─── Entry Point ────────────────────────────────────────────────────────────
+# ─── Main ───────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8050)
+    app.run_server(debug=True)
