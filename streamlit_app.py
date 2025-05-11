@@ -37,44 +37,31 @@ with open(geojson_path) as f:
 
 # ─── Sidebar Filters ─────────────────────────────────────────────────────────
 st.sidebar.header("Filters")
+# Default filter values
 defaults = {'disease':'All Diseases', 'county':'All Counties', 'year':'All Years', 'sex':'All'}
-# Initialize default session state
+# Initialize session state keys if missing
 for key, val in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
-# Prepare options
+# Prepare select options
 disease_opts = ['All Diseases'] + sorted(df['Disease'].unique())
 county_opts  = ['All Counties'] + sorted(df['County'].unique())
 year_opts    = ['All Years'] + sorted(df['Year'].astype(str).unique())
 sex_opts     = ['All'] + sorted(df['Sex'].unique())
 
-# Render selectboxes (automatically set session_state via key)
-disease = st.sidebar.selectbox(
-    "Disease", disease_opts,
-    index=disease_opts.index(st.session_state['disease']), key='disease'
-)
-county = st.sidebar.selectbox(
-    "County", county_opts,
-    index=county_opts.index(st.session_state['county']), key='county'
-)
-year = st.sidebar.selectbox(
-    "Year", year_opts,
-    index=year_opts.index(st.session_state['year']), key='year'
-)
-sex = st.sidebar.selectbox(
-    "Sex", sex_opts,
-    index=sex_opts.index(st.session_state['sex']), key='sex'
-)
+# Render selectboxes
+disease = st.sidebar.selectbox("Disease", disease_opts, index=disease_opts.index(st.session_state['disease']), key='disease')
+county  = st.sidebar.selectbox("County",  county_opts,  index=county_opts.index(st.session_state['county']),   key='county')
+year    = st.sidebar.selectbox("Year",    year_opts,    index=year_opts.index(st.session_state['year']),       key='year')
+sex     = st.sidebar.selectbox("Sex",     sex_opts,     index=sex_opts.index(st.session_state['sex']),         key='sex')
 
-# Clear filters button
-def clear_filters():
-    for k, v in defaults.items():
-        st.session_state[k] = v
-    st.experimental_rerun()
-
+# Clear Filters: remove state keys and rerun
 if st.sidebar.button("Clear Filters"):
-    clear_filters()
+    for key in defaults:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.experimental_rerun()
 
 # ─── Header ─────────────────────────────────────────────────────────────────
 st.markdown("# California Infectious Disease Dashboard")
@@ -99,48 +86,29 @@ first_year  = int(dff['Year'].min()) if not dff.empty else 'N/A'
 last_year   = int(dff['Year'].max()) if not dff.empty else 'N/A'
 
 with col1:
-    st.markdown(
-        f"<div class='metric-card'><p class='metric-label'>Total Cases</p><p class='metric-value'>{total_cases:,}</p></div>",
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div class='metric-card'><p class='metric-label'>Total Cases</p><p class='metric-value'>{total_cases:,}</p></div>", unsafe_allow_html=True)
 with col2:
-    st.markdown(
-        f"<div class='metric-card'><p class='metric-label'>First Reported Year</p><p class='metric-value'>{first_year}</p></div>",
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div class='metric-card'><p class='metric-label'>First Reported Year</p><p class='metric-value'>{first_year}</p></div>", unsafe_allow_html=True)
 with col3:
-    st.markdown(
-        f"<div class='metric-card'><p class='metric-label'>Last Reported Year</p><p class='metric-value'>{last_year}</p></div>",
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div class='metric-card'><p class='metric-label'>Last Reported Year</p><p class='metric-value'>{last_year}</p></div>", unsafe_allow_html=True)
 
 # ─── Charts Section ─────────────────────────────────────────────────────────
 chart_col, map_col = st.columns([2,1], gap='large')
 
 # Bar Chart
 bar_df = dff.groupby('Year')['Cases'].sum().reset_index()
-fig_bar = px.bar(
-    bar_df, x='Year', y='Cases', title='Filtered Data Breakdown',
-    labels={'Cases':'Number of Cases'}, template='plotly_white'
-)
+fig_bar = px.bar(bar_df, x='Year', y='Cases', title='Filtered Data Breakdown', labels={'Cases':'Number of Cases'}, template='plotly_white')
 with chart_col:
     st.plotly_chart(fig_bar, use_container_width=True)
 
 # Map Chart
 map_df = dff.groupby('County', as_index=False)['Cases'].sum()
 map_df['County'] = map_df['County'].str.title()
-fig_map = px.choropleth_mapbox(
-    map_df, geojson=counties_geo, locations='County', featureidkey='properties.NAME',
-    color='Cases', hover_data=['County','Cases'], mapbox_style='carto-positron',
-    center={'lat':37.5, 'lon':-119.5}, zoom=5, opacity=0.6, title='Cases by County Map',
-    template='plotly_white'
-)
+fig_map = px.choropleth_mapbox(map_df, geojson=counties_geo, locations='County', featureidkey='properties.NAME', color='Cases', hover_data=['County','Cases'], mapbox_style='carto-positron', center={'lat':37.5, 'lon':-119.5}, zoom=5, opacity=0.6, title='Cases by County Map', template='plotly_white')
 with map_col:
     st.plotly_chart(fig_map, use_container_width=True)
 
 # Line Chart
 st.markdown("<div class='section-title'>Cases Over Time</div>", unsafe_allow_html=True)
-fig_line = px.area(
-    bar_df, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, template='plotly_white'
-)
+fig_line = px.area(bar_df, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, template='plotly_white')
 st.plotly_chart(fig_line, use_container_width=True)
