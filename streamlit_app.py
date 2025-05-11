@@ -31,55 +31,50 @@ if not os.path.exists(csv_path) or not os.path.exists(geojson_path):
     st.error("Missing data files. Ensure 'california_infectious_diseases.csv' and 'california-counties.geojson' are present.")
     st.stop()
 
-# master DataFrame
 df = pd.read_csv(csv_path)
-# geojson
 with open(geojson_path) as f:
     counties_geo = json.load(f)
 
 # ─── Sidebar Filters ─────────────────────────────────────────────────────────
 st.sidebar.header("Filters")
-# Default values for filters
-defaults = {
-    'disease': 'All Diseases',
-    'county':  'All Counties',
-    'year':    'All Years',
-    'sex':     'All'
-}
-# initialize session state
+defaults = {'disease':'All Diseases', 'county':'All Counties', 'year':'All Years', 'sex':'All'}
+# Initialize default session state
 for key, val in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
-# options
+# Prepare options
 disease_opts = ['All Diseases'] + sorted(df['Disease'].unique())
 county_opts  = ['All Counties'] + sorted(df['County'].unique())
 year_opts    = ['All Years'] + sorted(df['Year'].astype(str).unique())
 sex_opts     = ['All'] + sorted(df['Sex'].unique())
 
-# selectboxes with current state as default
-st.session_state['disease'] = st.sidebar.selectbox(
+# Render selectboxes (automatically set session_state via key)
+disease = st.sidebar.selectbox(
     "Disease", disease_opts,
     index=disease_opts.index(st.session_state['disease']), key='disease'
 )
-st.session_state['county'] = st.sidebar.selectbox(
+county = st.sidebar.selectbox(
     "County", county_opts,
     index=county_opts.index(st.session_state['county']), key='county'
 )
-st.session_state['year'] = st.sidebar.selectbox(
+year = st.sidebar.selectbox(
     "Year", year_opts,
     index=year_opts.index(st.session_state['year']), key='year'
 )
-st.session_state['sex'] = st.sidebar.selectbox(
+sex = st.sidebar.selectbox(
     "Sex", sex_opts,
     index=sex_opts.index(st.session_state['sex']), key='sex'
 )
 
-# clear filters button
-if st.sidebar.button("Clear Filters"):
-    for key, val in defaults.items():
-        st.session_state[key] = val
+# Clear filters button
+def clear_filters():
+    for k, v in defaults.items():
+        st.session_state[k] = v
     st.experimental_rerun()
+
+if st.sidebar.button("Clear Filters"):
+    clear_filters()
 
 # ─── Header ─────────────────────────────────────────────────────────────────
 st.markdown("# California Infectious Disease Dashboard")
@@ -87,19 +82,19 @@ st.markdown("*Data from 2001–2023 (Provisional)*")
 
 # ─── Filter Data ────────────────────────────────────────────────────────────
 dff = df.copy()
-if st.session_state['disease'] != defaults['disease']:
-    dff = dff[dff['Disease'] == st.session_state['disease']]
-if st.session_state['county']  != defaults['county']:
-    dff = dff[dff['County'] == st.session_state['county']]
-if st.session_state['year']    != defaults['year']:
-    dff = dff[dff['Year'] == int(st.session_state['year'])]
-if st.session_state['sex']     != defaults['sex']:
-    dff = dff[dff['Sex'] == st.session_state['sex']]
+if disease != defaults['disease']:
+    dff = dff[dff['Disease'] == disease]
+if county != defaults['county']:
+    dff = dff[dff['County'] == county]
+if year != defaults['year']:
+    dff = dff[dff['Year'] == int(year)]
+if sex != defaults['sex']:
+    dff = dff[dff['Sex'] == sex]
 
 # ─── Metrics Cards ─────────────────────────────────────────────────────────
 col1, col2, col3 = st.columns(3, gap='large')
 
-total_cases = dff['Cases'].sum()
+total_cases = int(dff['Cases'].sum())
 first_year  = int(dff['Year'].min()) if not dff.empty else 'N/A'
 last_year   = int(dff['Year'].max()) if not dff.empty else 'N/A'
 
@@ -120,19 +115,18 @@ with col3:
     )
 
 # ─── Charts Section ─────────────────────────────────────────────────────────
-# Bar + Map in two columns
 chart_col, map_col = st.columns([2,1], gap='large')
 
-# Bar chart: Filtered Data Breakdown
-df_bar = dff.groupby('Year')['Cases'].sum().reset_index()
+# Bar Chart
+bar_df = dff.groupby('Year')['Cases'].sum().reset_index()
 fig_bar = px.bar(
-    df_bar, x='Year', y='Cases', title='Filtered Data Breakdown',
+    bar_df, x='Year', y='Cases', title='Filtered Data Breakdown',
     labels={'Cases':'Number of Cases'}, template='plotly_white'
 )
 with chart_col:
     st.plotly_chart(fig_bar, use_container_width=True)
 
-# Map chart: Cases by County
+# Map Chart
 map_df = dff.groupby('County', as_index=False)['Cases'].sum()
 map_df['County'] = map_df['County'].str.title()
 fig_map = px.choropleth_mapbox(
@@ -144,9 +138,9 @@ fig_map = px.choropleth_mapbox(
 with map_col:
     st.plotly_chart(fig_map, use_container_width=True)
 
-# Line chart: Cases Over Time
+# Line Chart
 st.markdown("<div class='section-title'>Cases Over Time</div>", unsafe_allow_html=True)
 fig_line = px.area(
-    df_bar, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, template='plotly_white'
+    bar_df, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, template='plotly_white'
 )
 st.plotly_chart(fig_line, use_container_width=True)
