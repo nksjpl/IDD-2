@@ -43,20 +43,17 @@ with open(geo_file) as f:
 # ─── Filters (Sidebar) ──────────────────────────────────────────────────────
 st.sidebar.header("Filters")
 
-# Default values
 defaults = {
     'disease': 'All Diseases',
     'county':  'All Counties',
     'year':    'All Years',
     'sex':     'All'
 }
-
 # Initialize session state
 for key, val in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
-# Options
 options = {
     'disease': ['All Diseases'] + sorted(df['Disease'].unique()),
     'county':  ['All Counties'] + sorted(df['County'].unique()),
@@ -64,12 +61,11 @@ options = {
     'sex':     ['All'] + sorted(df['Sex'].unique())
 }
 
-# Sidebar widgets
+# Render widgets
 st.session_state['disease'] = st.sidebar.selectbox("Disease", options['disease'], index=options['disease'].index(st.session_state['disease']))
 st.session_state['county']  = st.sidebar.selectbox("County",  options['county'],  index=options['county'].index(st.session_state['county']))
 st.session_state['year']    = st.sidebar.selectbox("Year",    options['year'],    index=options['year'].index(st.session_state['year']))
 st.session_state['sex']     = st.sidebar.selectbox("Sex",     options['sex'],     index=options['sex'].index(st.session_state['sex']))
-
 if st.sidebar.button("Clear Filters"):
     for key, val in defaults.items():
         st.session_state[key] = val
@@ -79,7 +75,7 @@ if st.sidebar.button("Clear Filters"):
 st.markdown("<div class='section-header'>California Infectious Disease Dashboard</div>", unsafe_allow_html=True)
 st.markdown("*Data from 2001–2023 (Provisional)*")
 
-# Filter DataFrame
+# Apply filters
 dff = df.copy()
 if st.session_state['disease'] != defaults['disease']:
     dff = dff[dff['Disease'] == st.session_state['disease']]
@@ -108,23 +104,47 @@ with col3:
 chart1, chart2 = st.columns([2,1], gap='large')
 
 # Bar Chart
-bar_df = dff.groupby('Year')['Cases'].sum().reset_index()
-fig_bar = px.bar(bar_df, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, title='Filtered Data Breakdown', template='plotly_white')
+df_bar = dff.groupby('Year')['Cases'].sum().reset_index()
+fig_bar = px.bar(df_bar, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, title='Filtered Data Breakdown', template='plotly_white')
 with chart1:
     st.plotly_chart(fig_bar, use_container_width=True)
 
 # Map Chart
-map_df = dff.groupby('County')['Cases'].sum().reset_index()
+# ---------- MAP ----------
+map_df = dff.groupby("County", as_index=False)["Cases"].sum()
+# ensure county names match the GeoJSON properties
+map_df["County"] = map_df["County"].str.title()
+
+sel_county = st.session_state['county']
+# If a single county selected highlight others gray
+if sel_county != defaults['county']:
+    map_df = map_df.assign(highlight=map_df["County"].eq(sel_county.title()))
+else:
+    map_df = map_df.assign(highlight=True)
+
+# Base layer: all counties gray
 fig_map = px.choropleth_mapbox(
     map_df, geojson=counties_geo, locations='County', featureidkey='properties.NAME',
-    color='Cases', hover_data=['County','Cases'], mapbox_style='carto-positron',
-    center={'lat':37.5,'lon':-119.5}, zoom=5, opacity=0.6, title='Cases by County Map', template='plotly_white'
+    color_discrete_sequence=['lightgrey'], hover_data=['County','Cases'],
+    mapbox_style='carto-positron', center={'lat':37.5,'lon':-119.5}, zoom=5, opacity=0.6,
+    title='Cases by County Map'
 )
-fig_map.update_layout(margin={'r':0,'t':30,'l':0,'b':0})
+# Overlay highlighted county with color scale
+if sel_county != defaults['county']:
+    highlighted = map_df[map_df['highlight']]
+    fig_high = px.choropleth_mapbox(
+        highlighted, geojson=counties_geo, locations='County', featureidkey='properties.NAME',
+        color='Cases', hover_data=['County','Cases'], mapbox_style='carto-positron',
+        center={'lat':37.5,'lon':-119.5}, zoom=5, opacity=0.8,
+        color_continuous_scale='blues', title=None
+    )
+    for t in fig_high.data:
+        fig_map.add_trace(t)
+fig_map.update_layout(margin={'r':0,'t':30,'l':0,'b':0}, coloraxis_showscale=False)
 with chart2:
     st.plotly_chart(fig_map, use_container_width=True)
 
 # Line Chart
 st.markdown("<div class='section-header'>Cases Over Time</div>", unsafe_allow_html=True)
-fig_line = px.area(bar_df, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, template='plotly_white')
+fig_line = px.area(df_bar, x='Year', y='Cases', labels={'Cases':'Number of Cases'}, template='plotly_white')
 st.plotly_chart(fig_line, use_container_width=True)
