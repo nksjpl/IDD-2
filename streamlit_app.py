@@ -22,99 +22,121 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ─── Utility: String to Color Hash ─────────────────────────────────────────
-def string_to_color(s: str) -> str:
-    # Create a deterministic color code from a string
-    hash_code = 0
-    for ch in s:
-        hash_code = ord(ch) + ((hash_code << 5) - hash_code)
-        hash_code &= 0xFFFFFFFF
-    r = (hash_code & 0xFF0000) >> 16
-    g = (hash_code & 0x00FF00) >> 8
-    b = hash_code & 0x0000FF
-    # Avoid purple-ish defaults
+# ─── Helper: Color hashing ───────────────────────────────────────────────────
+def string_to_color(name: str) -> str:
+    h = 0
+    for ch in name:
+        h = ord(ch) + ((h << 5) - h)
+        h &= 0xFFFFFFFF
+    r = (h & 0xFF0000) >> 16
+    g = (h & 0x00FF00) >> 8
+    b = h & 0x0000FF
     if r > 100 and b > 100 and g < 100:
         g = (g + 128) % 256
-    # Clamp brightness
     r = max(40, min(210, r))
     g = max(40, min(210, g))
     b = max(40, min(210, b))
     return f"#{r:02x}{g:02x}{b:02x}"
 
-# ─── Data Loading ──────────────────────────────────────────────────────────
-base = os.path.dirname(__file__)
-csv_file = os.path.join(base, 'california_infectious_diseases.csv')
-geo_file = os.path.join(base, 'california-counties.geojson')
-if not os.path.exists(csv_file) or not os.path.exists(geo_file):
-    st.error("Missing data files. Ensure CSV and GeoJSON are present.")
+# ─── Data Loading ───────────────────────────────────────────────────────────
+BASE = os.path.dirname(__file__)
+csv_path = os.path.join(BASE, 'california_infectious_diseases.csv')
+geojson_path = os.path.join(BASE, 'california-counties.geojson')
+if not os.path.exists(csv_path) or not os.path.exists(geojson_path):
+    st.error("Data files missing. Make sure CSV and GeoJSON exist.")
     st.stop()
-df = pd.read_csv(csv_file)
-with open(geo_file) as f:
+df = pd.read_csv(csv_path)
+with open(geojson_path) as f:
     counties_geo = json.load(f)
 
-# ─── Filters (Sidebar) ─────────────────────────────────────────────────────
+# ─── Sidebar Filters ─────────────────────────────────────────────────────────
 st.sidebar.header("Filters")
-defaults = {'disease':'All Diseases','county':'All Counties','year':'All Years','sex':'All'}
-for k,v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+defaults = {'disease':'All Diseases', 'county':'All Counties', 'year':'All Years', 'sex':'All'}
+for key, val in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 options = {
-    'disease':['All Diseases']+sorted(df['Disease'].unique()),
-    'county':['All Counties']+sorted(df['County'].unique()),
-    'year':['All Years']+sorted(df['Year'].astype(str).unique()),
-    'sex':['All']+sorted(df['Sex'].unique())
+    'disease': ['All Diseases'] + sorted(df['Disease'].unique()),
+    'county':  ['All Counties'] + sorted(df['County'].unique()),
+    'year':    ['All Years'] + sorted(df['Year'].astype(str).unique()),
+    'sex':     ['All'] + sorted(df['Sex'].unique())
 }
-st.session_state['disease']=st.sidebar.selectbox("Disease",options['disease'],index=options['disease'].index(st.session_state['disease']))
-st.session_state['county']=st.sidebar.selectbox("County",options['county'],index=options['county'].index(st.session_state['county']))
-st.session_state['year']=st.sidebar.selectbox("Year",options['year'],index=options['year'].index(st.session_state['year']))
-st.session_state['sex']=st.sidebar.selectbox("Sex",options['sex'],index=options['sex'].index(st.session_state['sex']))
+st.session_state['disease'] = st.sidebar.selectbox("Disease", options['disease'], index=options['disease'].index(st.session_state['disease']))
+st.session_state['county']  = st.sidebar.selectbox("County",  options['county'],  index=options['county'].index(st.session_state['county']))
+st.session_state['year']    = st.sidebar.selectbox("Year",    options['year'],    index=options['year'].index(st.session_state['year']))
+st.session_state['sex']     = st.sidebar.selectbox("Sex",     options['sex'],     index=options['sex'].index(st.session_state['sex']))
 if st.sidebar.button("Clear Filters"):
-    for k,v in defaults.items(): st.session_state[k]=v
+    for k, v in defaults.items():
+        st.session_state[k] = v
     st.experimental_rerun()
 
-# ─── Main Title ───────────────────────────────────────────────────────────
+# ─── Main Title ─────────────────────────────────────────────────────────────
 st.markdown("<div class='section-header'>California Infectious Disease Dashboard</div>", unsafe_allow_html=True)
 st.markdown("*Data from 2001–2023 (Provisional)*")
 
 # ─── Apply Filters ──────────────────────────────────────────────────────────
-dff = df.copy()
-if st.session_state['disease']!='All Diseases': dff=dff[dff['Disease']==st.session_state['disease']]
-if st.session_state['county']!='All Counties': dff=dff[dff['County']==st.session_state['county']]
-if st.session_state['year']!='All Years': dff=dff[dff['Year']==int(st.session_state['year'])]
-if st.session_state['sex']!='All': dff=dff[dff['Sex']==st.session_state['sex']]
+df_filtered = df.copy()
+if st.session_state['disease'] != defaults['disease']:
+    df_filtered = df_filtered[df_filtered['Disease'] == st.session_state['disease']]
+if st.session_state['county']  != defaults['county']:
+    df_filtered = df_filtered[df_filtered['County']  == st.session_state['county']]
+if st.session_state['year']    != defaults['year']:
+    df_filtered = df_filtered[df_filtered['Year'] == int(st.session_state['year'])]
+if st.session_state['sex']     != defaults['sex']:
+    df_filtered = df_filtered[df_filtered['Sex'] == st.session_state['sex']]
 
-# ─── Metrics Cards ─────────────────────────────────────────────────────────
-col1,col2,col3=st.columns(3,gap='medium')
-total=dff['Cases'].sum()
-first=int(dff['Year'].min()) if not dff.empty else 'N/A'
-last=int(dff['Year'].max())  if not dff.empty else 'N/A'
-with col1: st.markdown(f"<div class='dashboard-card'><p class='metric-title'>Total Cases</p><p class='metric-value'>{total:,}</p></div>",unsafe_allow_html=True)
-with col2: st.markdown(f"<div class='dashboard-card'><p class='metric-title'>First Year</p><p class='metric-value'>{first}</p></div>",unsafe_allow_html=True)
-with col3: st.markdown(f"<div class='dashboard-card'><p class='metric-title'>Last Year</p><p class='metric-value'>{last}</p></div>",unsafe_allow_html=True)
+# ─── Summary Metrics ───────────────────────────────────────────────────────
+col1, col2, col3 = st.columns(3, gap='medium')
+total_cases = df_filtered['Cases'].sum()
+first_year  = int(df_filtered['Year'].min()) if not df_filtered.empty else 'N/A'
+last_year   = int(df_filtered['Year'].max()) if not df_filtered.empty else 'N/A'
+with col1:
+    st.markdown(f"<div class='dashboard-card'><p class='metric-title'>Total Cases</p><p class='metric-value'>{total_cases:,}</p></div>", unsafe_allow_html=True)
+with col2:
+    st.markdown(f"<div class='dashboard-card'><p class='metric-title'>First Reported Year</p><p class='metric-value'>{first_year}</p></div>", unsafe_allow_html=True)
+with col3:
+    st.markdown(f"<div class='dashboard-card'><p class='metric-title'>Last Reported Year</p><p class='metric-value'>{last_year}</p></div>", unsafe_allow_html=True)
 
-# ─── Charts ─────────────────────────────────────────────────────────────────
-chart1,chart2=st.columns([2,1],gap='large')
+# ─── Charts Layout ─────────────────────────────────────────────────────────
+chart_left, chart_right = st.columns([2,1], gap='large')
+
 # Bar Chart
-df_bar=dff.groupby('Year')['Cases'].sum().reset_index()
-fig_bar=px.bar(df_bar,x='Year',y='Cases',labels={'Cases':'Cases'},template='plotly_white',title='Data Breakdown')
-with chart1: st.plotly_chart(fig_bar,use_container_width=True)
+bar_df = df_filtered.groupby('Year')['Cases'].sum().reset_index()
+fig_bar = px.bar(bar_df, x='Year', y='Cases', labels={'Cases':'Cases'}, template='plotly_white', title='Filtered Data Breakdown')
+with chart_left:
+    st.plotly_chart(fig_bar, use_container_width=True)
 
-# Map Chart with String-based Coloring
-map_df=dff.groupby('County',as_index=False)['Cases'].sum()
-map_df['County']=map_df['County'].str.title()
-def_colors={row['County']:string_to_color(row['County']) for _,row in map_df.iterrows()}
-sel=st.session_state['county']
-# Highlight override
-if sel!='All Counties': def_colors[sel.title()]='#805AD5'
-fig_map=px.choropleth_mapbox(
-    map_df,geojson=counties_geo,locations='County',featureidkey='properties.NAME',
-    color='County',color_discrete_map=def_colors,hover_data=['County','Cases'],
-    mapbox_style='carto-positron',center={'lat':37.5,'lon':-119.5},zoom=5,opacity=0.8
+# Map Chart with string-based colors and highlight
+map_df = df_filtered.groupby('County', as_index=False)['Cases'].sum()
+map_df['County'] = map_df['County'].str.title()
+
+# Generate base colors
+color_map = {row['County']: string_to_color(row['County']) for _, row in map_df.iterrows()}
+# Highlight selected county in purple
+selected = st.session_state['county']
+if selected != defaults['county']:
+    sel_title = selected.title()
+    if sel_title in color_map:
+        color_map[sel_title] = '#805AD5'
+
+fig_map = px.choropleth_mapbox(
+    map_df,
+    geojson=counties_geo,
+    locations='County',
+    featureidkey='properties.NAME',
+    color='County',
+    color_discrete_map=color_map,
+    hover_data=['County','Cases'],
+    mapbox_style='carto-positron',
+    center={'lat':37.5, 'lon':-119.5},
+    zoom=5,
+    opacity=0.8
 )
-fig_map.update_layout(margin={'r':0,'t':30,'l':0,'b':0},showlegend=False)
-with chart2: st.plotly_chart(fig_map,use_container_width=True)
+fig_map.update_layout(margin={'r':0,'t':30,'l':0,'b':0}, showlegend=False)
+with chart_right:
+    st.plotly_chart(fig_map, use_container_width=True)
 
 # Line Chart
-st.markdown("<div class='section-header'>Cases Over Time</div>",unsafe_allow_html=True)
-fig_line=px.area(df_bar,x='Year',y='Cases',labels={'Cases':'Cases'},template='plotly_white')
-st.plotly_chart(fig_line,use_container_width=True)
+st.markdown("<div class='section-header'>Cases Over Time</div>", unsafe_allow_html=True)
+fig_line = px.area(bar_df, x='Year', y='Cases', labels={'Cases':'Cases'}, template='plotly_white')
+st.plotly_chart(fig_line, use_container_width=True)
