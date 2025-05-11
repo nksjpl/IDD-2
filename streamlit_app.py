@@ -103,11 +103,32 @@ bar_col.plotly_chart(fig_bar, use_container_width=True)
 map_df = filtered.groupby('County', as_index=False)['Cases'].sum()
 map_df['County'] = map_df['County'].str.title()
 
-# Build deterministic color map for all counties in the GeoJSON, to keep colors stable
-all_counties = {feature['properties']['NAME'].title() for feature in counties_geo['features']}
-color_map = {c: string_to_color(c) for c in all_counties}
+# Build deterministic color map for all counties (handle NAME vs name keys)
+try:
+    all_counties = {feat['properties']['NAME'].title() for feat in counties_geo['features']}
+    feature_key = 'properties.NAME'
+except KeyError:
+    all_counties = {feat['properties']['name'].title() for feat in counties_geo['features']}
+    feature_key = 'properties.name'
+
+color_map = {county: string_to_color(county) for county in all_counties}
 
 fig_map = px.choropleth_mapbox(
+    map_df,
+    geojson=counties_geo,
+    locations='County',
+    featureidkey=feature_key,
+    color='County',
+    color_discrete_map=color_map,
+    hover_data=['County','Cases'],
+    mapbox_style='carto-positron',
+    center={'lat':37.5,'lon':-119.5},
+    zoom=5,
+    opacity=0.85,
+    title='Cases by County Map',
+    template='plotly_white'
+)
+ px.choropleth_mapbox(
     map_df,
     geojson=counties_geo,
     locations='County',
