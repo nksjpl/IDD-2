@@ -250,39 +250,49 @@ if st.session_state.sex_filter != 'All':
     df_filtered = df_filtered[df_filtered['Sex'] == st.session_state.sex_filter]
 
 # ─── Metrics Cards ───────────────────────────────────────────────────────────
-# Create a container for metric cards
-st.markdown("<div class='metric-card-container'>", unsafe_allow_html=True)
+# Wrapper div for bottom margin, replacing .metric-card-container's margin role
+st.markdown("<div style='margin-bottom: 2.5rem;'>", unsafe_allow_html=True)
 
-# Calculate metrics from the filtered data
+metric_cols = st.columns(3, gap="large") # Use st.columns for horizontal layout
+
 total_cases = int(df_filtered['Cases'].sum())
 first_reported_year = df_filtered['Year'].min() if not df_filtered.empty else "N/A"
 last_reported_year = df_filtered['Year'].max() if not df_filtered.empty else "N/A"
 
-# Display Metric Card 1: Total Cases
-st.markdown(f"""
-<div class='metric-card'>
-    <p class='metric-label'>Total Cases</p>
-    <p class='metric-value'>{total_cases:,}</p>
-</div>
-""", unsafe_allow_html=True)
+ICON_CASES = "📊"
+ICON_CALENDAR_START = "🗓️"
+ICON_CALENDAR_END = "🗓️"
 
-# Display Metric Card 2: First Reported Year
-st.markdown(f"""
-<div class='metric-card'>
-    <p class='metric-label'>First Reported Year</p>
-    <p class='metric-value'>{first_reported_year}</p>
-</div>
-""", unsafe_allow_html=True)
+with metric_cols[0]:
+    st.markdown(f"""
+    <div class='metric-card'>
+        <div class='metric-icon'>{ICON_CASES}</div>
+        <p class='metric-label'>Total Cases</p>
+        <p class='metric-value'>{total_cases:,}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-# Display Metric Card 3: Last Reported Year
-st.markdown(f"""
-<div class='metric-card'>
-    <p class='metric-label'>Last Reported Year</p>
-    <p class='metric-value'>{last_reported_year}</p>
-</div>
-""", unsafe_allow_html=True)
+with metric_cols[1]:
+    st.markdown(f"""
+    <div class='metric-card'>
+        <div class='metric-icon'>{ICON_CALENDAR_START}</div>
+        <p class='metric-label'>First Reported Year</p>
+        <p class='metric-value'>{first_reported_year}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True) # Close metric-card-container
+with metric_cols[2]:
+    st.markdown(f"""
+    <div class='metric-card'>
+        <div class='metric-icon'>{ICON_CALENDAR_END}</div>
+        <p class='metric-label'>Last Reported Year</p>
+        <p class='metric-value'>{last_reported_year}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True) # Close margin-bottom wrapper
+
+
 
 
 # ─── Charts Section ─────────────────────────────────────────────────────────
